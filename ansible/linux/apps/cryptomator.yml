@@ -1,0 +1,19 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Add cryptomator repo
+      apt_repository:
+        repo: 'ppa:sebastian-stenzel/cryptomator'
+        codename: "{{ ubuntu_distro | default('jammy') }}"
+
+    - name: Install cryptomator
+      apt:
+        update_cache: yes
+        pkg: 
+          - gvfs-fuse
+          - gvfs-backends
+          - cryptomator
+        state: latest

@@ -1,0 +1,5 @@
+---
+- import_playbook: linux/main.yml
+- import_playbook: linux/dotfiles.yml
+- import_playbook: docker/main.yml
+- import_playbook: linux/apps.yml

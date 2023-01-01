@@ -1,0 +1,8 @@
+# Compiled Python files
+*.pyc
+
+# Folder view configuration files
+Desktop.ini
+
+# Thumbnail cache files
+Thumbs.db

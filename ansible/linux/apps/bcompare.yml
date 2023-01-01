@@ -1,0 +1,40 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+  
+  tasks:
+    - name: Check if bcompare is installed
+      command: dpkg-query -W bcompare
+      register: bcompare_deb_pkg
+      failed_when: bcompare_deb_pkg.rc > 1
+      changed_when: bcompare_deb_pkg.rc == 1
+  
+    - name: Get scootersoftware key
+      get_url:
+        url: https://www.scootersoftware.com/RPM-GPG-KEY-scootersoftware
+        dest: /tmp/scootersoftware-pub.gpg
+      when: bcompare_deb_pkg.rc == 1
+
+    - name: Create scootersoftware gpg key 
+      command: gpg --batch --yes -o /usr/share/keyrings/scootersoftware.gpg --dearmor /tmp/scootersoftware-pub.gpg
+      register: gpg_output
+      when: bcompare_deb_pkg.rc == 1
+
+    - name: Remove scootersoftware temp key
+      file:
+        path: "/tmp/scootersoftware-pub.gpg"
+        state: absent
+      when: bcompare_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add bcompare repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/scootersoftware.gpg] http://www.scootersoftware.com/ bcompare4 non-free"
+        state: present
+      when: bcompare_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install bcompare
+      apt:
+        update_cache: yes
+        pkg: "bcompare"
+      when: bcompare_deb_pkg.rc == 1

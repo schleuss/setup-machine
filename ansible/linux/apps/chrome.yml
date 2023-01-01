@@ -1,0 +1,28 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:  
+    - name: Check if chrome is installed
+      command: dpkg-query -W google-chrome-stable
+      register: chrome_deb_pkg
+      failed_when: chrome_deb_pkg.rc > 1
+      changed_when: chrome_deb_pkg.rc == 1
+      
+    - name: Download chrome
+      get_url: 
+        url="https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+        dest="/tmp/google-chrome-stable_current_amd64.deb"
+      when: chrome_deb_pkg.rc == 1
+
+    - name: Install chrome
+      apt: deb="/tmp/google-chrome-stable_current_amd64.deb"
+      become: true
+      when: chrome_deb_pkg.rc == 1
+
+    - name: Remove chrome install package
+      file:
+        path: /tmp/google-chrome-stable_current_amd64.deb
+        state: absent
+      when: chrome_deb_pkg.rc == 1  

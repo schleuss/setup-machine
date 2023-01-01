@@ -1,0 +1,41 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Check if enpass is installed
+      command: dpkg-query -W enpass
+      register: enpass_deb_pkg
+      failed_when: enpass_deb_pkg.rc > 1
+      changed_when: enpass_deb_pkg.rc == 1
+  
+    - name: Get enpass key
+      get_url:
+        url: https://apt.enpass.io/keys/enpass-linux.key
+        dest: /tmp/enpass.asc
+      when: enpass_deb_pkg.rc == 1
+
+    - name: Create enpass gpg key 
+      command: gpg --batch --yes -o /usr/share/keyrings/enpass-linux.gpg --dearmor /tmp/enpass.asc
+      register: gpg_output
+      when: enpass_deb_pkg.rc == 1
+
+    - name: Remove enpass temp key 
+      file:
+        path: "/tmp/enpass.asc"
+        state: absent
+      when: enpass_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add enpass repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/enpass-linux.gpg] https://apt.enpass.io/ stable main"
+        state: present
+      when: enpass_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install enpass
+      apt:
+        update_cache: yes
+        pkg: "enpass"
+      when: enpass_deb_pkg.rc == 1
+

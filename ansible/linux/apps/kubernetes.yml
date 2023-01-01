@@ -1,0 +1,30 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Check if kubectl is installed
+      command: dpkg-query -W kubectl
+      register: kubernetes_deb_pkg
+      failed_when: kubernetes_deb_pkg.rc > 1
+      changed_when: kubernetes_deb_pkg.rc == 1
+  
+    - name: Get kubectl key
+      get_url:
+        url:  https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        dest: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+      when: kubernetes_deb_pkg.rc == 1
+ 
+    - name: Add kubectl repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-{{ kubernetes_ubuntu_distro | default('xenial') }} main"
+        state: present
+      when: kubernetes_deb_pkg.rc == 1
+
+    - name: Install kubectl
+      apt:
+        update_cache: yes
+        pkg: "kubectl"
+      when: kubernetes_deb_pkg.rc == 1
+

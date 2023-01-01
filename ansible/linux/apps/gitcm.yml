@@ -1,0 +1,42 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:  
+    - name: Check if gcm-linux_amd64 is installed
+      command: dpkg-query -W gcm
+      register: gitcm_deb_pkg
+      failed_when: gitcm_deb_pkg.rc > 1
+      changed_when: gitcm_deb_pkg.rc == 1
+
+    - name: Check the lastest version
+      uri:
+        url: https://api.github.com/repos/GitCredentialManager/git-credential-manager/releases/latest
+        method: GET
+        body_format: json
+      register: results
+      changed_when: False
+      when: gitcm_deb_pkg.rc == 1
+
+    - set_fact:
+        gitcm_latest_version: "{{ results.json.tag_name[1:] }}"
+      changed_when: False
+      when: gitcm_deb_pkg.rc == 1
+
+    - name: Download gcm-linux_amd64
+      get_url: 
+        url="https://github.com/GitCredentialManager/git-credential-manager/releases/download/v{{ gitcm_latest_version }}/gcm-linux_amd64.{{ gitcm_latest_version }}.deb"
+        dest="/tmp/gcm-linux_amd64.{{ gitcm_latest_version }}.deb"
+      when: gitcm_deb_pkg.rc == 1
+
+    - name: Install gcm-linux_amd64
+      apt: deb="/tmp/gcm-linux_amd64.{{ gitcm_latest_version }}.deb"
+      become: true
+      when: gitcm_deb_pkg.rc == 1
+
+    - name: Remove gcm-linux_amd64 install package
+      file:
+        path: "/tmp/gcm-linux_amd64.{{ gitcm_latest_version }}.deb"
+        state: absent
+      when: gitcm_deb_pkg.rc == 1

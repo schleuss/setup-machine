@@ -1,0 +1,72 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Check if virtualbox is installed
+      command: dpkg-query -W virtualbox
+      register: virtualbox_deb_pkg
+      failed_when: virtualbox_deb_pkg.rc > 1
+      changed_when: virtualbox_deb_pkg.rc == 1
+  
+    - name: Get virtualbox key
+      get_url:
+        url:  https://www.virtualbox.org/download/oracle_vbox_2016.asc
+        dest: /tmp/oracle-virtualbox-2016.asc
+      when: virtualbox_deb_pkg.rc == 1
+
+    - name: Create virtualbox gpg key 
+      command: gpg --batch --yes -o /usr/share/keyrings/oracle-virtualbox-2016.gpg --dearmor /tmp/oracle-virtualbox-2016.asc 
+      register: gpg_output
+      when: virtualbox_deb_pkg.rc == 1
+
+    - name: Remove virtualbox temp key
+      file:
+        path: "/tmp/oracle-virtualbox-2016.asc"
+        state: absent
+      when: virtualbox_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add virtualbox repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/oracle-virtualbox-2016.gpg] https://download.virtualbox.org/virtualbox/debian {{ ubuntu_distro | default('jammy') }} contrib"
+        state: present
+      when: virtualbox_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install virtualbox
+      apt:
+        update_cache: yes
+        pkg: "virtualbox-{{ virtualbox_version | default('7.0') }}"
+      when: virtualbox_deb_pkg.rc == 1
+
+    - name: Check virtualbox Extension Pack
+      shell: "/usr/bin/VBoxManage list extpacks | grep 'Extension Packs: 0'"
+      register: vbox_output
+      failed_when: vbox_output.rc > 1
+      changed_when: vbox_output.rc == 1
+
+    - name: Get virtualbox version
+      shell: /usr/bin/VBoxManage --version | egrep "^([0-9]+\.[0-9]+\.[0-9]+)(.*)$" | cut -dr -f1
+      register: vbox_version_output
+      when: vbox_output.rc == 0
+      failed_when: vbox_version_output.rc > 1
+      changed_when: vbox_version_output.rc == 1
+
+    - name: Get virtualbox extension pack
+      get_url:
+        url:  "https://download.virtualbox.org/virtualbox/{{vbox_version_output.stdout}}/Oracle_VM_VirtualBox_Extension_Pack-{{vbox_version_output.stdout}}.vbox-extpack"
+        dest: /tmp/Oracle_VM_VirtualBox_Extension_Pack.vbox-extpack
+      register: vbox_download
+      when: vbox_output.rc == 0 and vbox_version_output.rc == 0
+
+    - name: Install virtualbox extension pack
+      shell: echo "y" | /usr/bin/VBoxManage extpack install --replace /tmp/Oracle_VM_VirtualBox_Extension_Pack.vbox-extpack
+      register: vbox_extpack_output
+      failed_when: vbox_extpack_output.rc > 1
+      changed_when: vbox_extpack_output.rc == 1
+
+    - name: Remove virtualboxextension pack temp file
+      file:
+        path: "/tmp/Oracle_VM_VirtualBox_Extension_Pack.vbox-extpack"
+        state: absent
+      when: vbox_output.rc == 0 and vbox_download.status_code == 200

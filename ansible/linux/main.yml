@@ -1,0 +1,29 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  pre_tasks:
+    - name: Carregar variaveis
+      include_vars: "{{ item }}"
+      with_first_found:
+        - "vars/package_{{ ansible_os_family }}.yml"
+        - "vars/package_default.yml"
+
+  tasks:  
+    - name: Update packages
+      apt: 
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+  
+    - name: Adicionar ferramentas
+      apt:
+        pkg: "{{ install_packages }}"
+
+    - name: Configurar Timezone
+      file:
+        src: /usr/share/zoneinfo/{{ timezone | default("America/Sao_Paulo") }}
+        dest: /etc/localtime
+        state: link
+

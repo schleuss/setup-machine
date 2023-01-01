@@ -1,0 +1,41 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Check if asbru-cm is installed
+      command: dpkg-query -W asbru-cm
+      register: asbru_deb_pkg
+      failed_when: asbru_deb_pkg.rc > 1
+      changed_when: asbru_deb_pkg.rc == 1
+  
+    - name: Get asbru-cm key
+      get_url:
+        url:  https://dl.cloudsmith.io/public/asbru-cm/release/gpg.7684B0670B1C65E8.key
+        dest: /tmp/gpg.7684B0670B1C65E8.key
+      when: asbru_deb_pkg.rc == 1
+
+    - name: Create asbru-cm gpg key 
+      command: gpg --batch --yes -o /usr/share/keyrings/asbru-cm-release-archive-keyring.gpg --dearmor /tmp/gpg.7684B0670B1C65E8.key
+      register: gpg_output
+      when: asbru_deb_pkg.rc == 1
+
+    - name: Remove asbru-cm temp key
+      file:
+        path: "/tmp/gpg.7684B0670B1C65E8.key"
+        state: absent
+      when: asbru_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add asbru-cm repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/asbru-cm-release-archive-keyring.gpg] https://dl.cloudsmith.io/public/asbru-cm/release/deb/ubuntu {{ ubuntu_distro | default('jammy') }} main"
+        state: present
+      when: asbru_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install asbru-cm
+      apt:
+        update_cache: yes
+        pkg: "asbru-cm"
+      when: asbru_deb_pkg.rc == 1
+

@@ -1,0 +1,39 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:  
+    - name: Check if insomnia is installed
+      command: dpkg-query -W insomnia
+      register: insomnia_deb_pkg
+      failed_when: insomnia_deb_pkg.rc > 1
+      changed_when: insomnia_deb_pkg.rc == 1
+
+    - name: Check the lastest insomnia version
+      shell: curl -s https://api.github.com/repos/Kong/insomnia/releases | jq -r '.[].tag_name' | grep core@ | head -n1 | cut -d@ -f2
+      register: results
+      changed_when: False
+      when: insomnia_deb_pkg.rc == 1
+
+    - set_fact:
+        insomnia_latest_version: "{{ results.stdout }}"
+      changed_when: False
+      when: insomnia_deb_pkg.rc == 1
+
+    - name: Download insomnia 
+      get_url: 
+        url="https://github.com/Kong/insomnia/releases/download/core%40{{ insomnia_latest_version }}/Insomnia.Core-{{ insomnia_latest_version }}.deb"
+        dest="/tmp/Insomnia.Core-{{ insomnia_latest_version }}.deb"
+      when: insomnia_deb_pkg.rc == 1
+
+    - name: Install insomnia 
+      apt: deb="/tmp/Insomnia.Core-{{ insomnia_latest_version }}.deb"
+      become: true
+      when: insomnia_deb_pkg.rc == 1
+
+    - name: Remove insomnia install package
+      file:
+        path: "/tmp/Insomnia.Core-{{ insomnia_latest_version }}.deb"
+        state: absent
+      when: insomnia_deb_pkg.rc == 1

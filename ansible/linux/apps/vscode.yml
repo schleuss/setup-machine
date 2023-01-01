@@ -1,0 +1,28 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:  
+    - name: Check if vscode is installed
+      command: dpkg-query -W code
+      register: vscode_deb_pkg
+      failed_when: vscode_deb_pkg.rc > 1
+      changed_when: vscode_deb_pkg.rc == 1
+      
+    - name: Download vscode
+      get_url: 
+        url="https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64"
+        dest="/tmp/code-linux_amd64.deb"
+      when: vscode_deb_pkg.rc == 1
+
+    - name: Install vscode
+      apt: deb="/tmp/code-linux_amd64.deb"
+      become: true
+      when: vscode_deb_pkg.rc == 1
+
+    - name: Remove vscode install package
+      file:
+        path: /tmp/code-linux_amd64.deb
+        state: absent
+      when: vscode_deb_pkg.rc == 1

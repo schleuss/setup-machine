@@ -1,0 +1,45 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Check if insync is installed
+      command: dpkg-query -W insync
+      register: insync_deb_pkg
+      failed_when: insync_deb_pkg.rc > 1
+      changed_when: insync_deb_pkg.rc == 1
+
+    - name: Import insync gpg key 
+      command: gpg --keyserver keyserver.ubuntu.com --recv-keys ACCAF35C
+      register: gpg_output
+      when: insync_deb_pkg.rc == 1
+
+    - name: Import insync gpg key 
+      shell: gpg --export -a ACCAF35C > /tmp/insync_public.asc
+      register: gpg_output
+      when: insync_deb_pkg.rc == 1
+
+    - name: Create insync gpg key 
+      command: gpg --batch --yes -o /usr/share/keyrings/insync-keyring.gpg --dearmor /tmp/insync_public.asc
+      register: gpg_output
+      when: insync_deb_pkg.rc == 1
+
+    - name: Remove insync temp key 
+      file:
+        path: "/tmp/insync_public.asc"
+        state: absent
+      when: insync_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add insync repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/insync-keyring.gpg] http://apt.insync.io/ubuntu {{ ubuntu_distro | default('jammy') }} non-free contrib"
+        state: present
+      when: insync_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install insync
+      apt:
+        update_cache: yes
+        pkg: "insync"
+      when: insync_deb_pkg.rc == 1
+

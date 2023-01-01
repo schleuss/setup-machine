@@ -1,0 +1,40 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+  
+  tasks:
+    - name: Check if trivy is installed
+      command: dpkg-query -W trivy
+      register: trivy_deb_pkg
+      failed_when: trivy_deb_pkg.rc > 1
+      changed_when: trivy_deb_pkg.rc == 1
+  
+    - name: Get trivy key
+      get_url:
+        url: https://aquasecurity.github.io/trivy-repo/deb/public.key 
+        dest: /tmp/trivy-pub.gpg
+      when: trivy_deb_pkg.rc == 1
+
+    - name: Create trivy gpg key 
+      command: gpg --batch --yes -o /usr/share/keyrings/trivy.gpg --dearmor /tmp/trivy-pub.gpg
+      register: gpg_output
+      when: trivy_deb_pkg.rc == 1
+
+    - name: Remove trivy temp key
+      file:
+        path: "/tmp/trivy-pub.gpg"
+        state: absent
+      when: trivy_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add trivy repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb {{ ubuntu_distro | default('jammy') }} main"
+        state: present
+      when: trivy_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install trivy
+      apt:
+        update_cache: yes
+        pkg: "trivy"
+      when: trivy_deb_pkg.rc == 1

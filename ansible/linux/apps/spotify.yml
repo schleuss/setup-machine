@@ -1,0 +1,41 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Check if spotify is installed
+      command: dpkg-query -W spotify-client
+      register: spotify_deb_pkg
+      failed_when: spotify_deb_pkg.rc > 1
+      changed_when: spotify_deb_pkg.rc == 1
+  
+    - name: Get spotify key
+      get_url:
+        url:  https://download.spotify.com/debian/pubkey_5E3C45D7B312C643.gpg
+        dest: /tmp/pubkey_5E3C45D7B312C643.gpg
+      when: spotify_deb_pkg.rc == 1
+
+    - name: Create spotify gpg key 
+      command: gpg --batch --yes -o /usr/share/keyrings/spotify-keyring.gpg --dearmor /tmp/pubkey_5E3C45D7B312C643.gpg
+      register: gpg_output
+      when: spotify_deb_pkg.rc == 1
+
+    - name: Remove spotify temp key
+      file:
+        path: "/tmp/pubkey_5E3C45D7B312C643.gpg"
+        state: absent
+      when: spotify_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add spotify repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/spotify-keyring.gpg] http://repository.spotify.com stable non-free"
+        state: present
+      when: spotify_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install spotify
+      apt:
+        update_cache: yes
+        pkg: "spotify-client"
+      when: spotify_deb_pkg.rc == 1
+

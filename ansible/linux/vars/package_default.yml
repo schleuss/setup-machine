@@ -1,0 +1,22 @@
+---
+install_packages:
+    - curl 
+    - gpg
+    - zip
+    - jq
+    - unzip
+    - wget
+    - net-tools
+    - sysstat
+    - tzdata
+    - vim 
+    - vim-solarized
+    - vim-snippets
+    - vim-scripts
+    - vim-syntax-docker
+    - flameshot
+    - filezilla
+    - file
+    - ppp
+    - ssh
+    - openjdk-11-jdk

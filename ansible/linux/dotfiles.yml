@@ -1,0 +1,21 @@
+---
+- hosts: localhost
+  connection: local 
+
+  tasks:
+    - name: Copy dotfiles
+      copy:
+        src: "{{ item }}"
+        dest: "{{ ansible_user_dir }}/.{{ item | basename }}"
+        force: no
+        mode: 0644
+      with_fileglob: resources/dotfiles/*
+
+    - name: Create vim directories
+      file:
+        path: "{{ ansible_user_dir }}/{{ item }}"
+        state: directory
+      loop:
+        - .vim
+        - .vim/backups
+        - .vim/swaps

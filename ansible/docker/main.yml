@@ -1,0 +1,71 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: docker
+      ignore_errors: True
+      
+  tasks:
+    - name: Update packages
+      apt: 
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: "deb https://download.docker.com/linux/ubuntu  {{ ubuntu_distro | default('jammy') }} stable"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Docker
+      package:
+        name: 
+          - docker-ce
+        state: present
+      become: yes
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      ignore_errors: True
+      become: yes
+
+    - name: Criar diretorios do docker
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      loop:
+        - /etc/docker
+        - /etc/systemd/system/docker.service.d
+
+    - name: Copiar arquivo de configuração do docker
+      copy:
+        mode: 0644
+        src: ./resources/daemon.json
+        dest: /etc/docker/daemon.json
+      notify: reload systemd
+
+    - name: Verifica arquivo de configuração docker para usuário
+      stat:
+        path: ~/.docker/config.json
+      register: docker_cfg_result
+
+#   - name: Efetuar login do repositório de imagens
+#     shell: docker login {{ docker_repo_url }} --username "{{ docker_repo_user }}" --password "{{ docker_repo_pass }}"
+#     when: not docker_cfg_result.stat.exists

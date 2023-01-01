@@ -1,0 +1,16 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Add inkscape repo
+      apt_repository:
+        repo: 'ppa:inkscape.dev/stable'
+        codename: "{{ ubuntu_distro | default('jammy') }}"
+
+    - name: Install inkscape
+      apt:
+        update_cache: yes
+        name: inkscape
+        state: latest

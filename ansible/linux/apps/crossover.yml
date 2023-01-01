@@ -1,0 +1,28 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:  
+    - name: Check if crossover is installed
+      command: dpkg-query -W crossover 
+      register: crossover_deb_pkg
+      failed_when: crossover_deb_pkg.rc > 1
+      changed_when: crossover_deb_pkg.rc == 1
+      
+    - name: Download crossover
+      get_url: 
+        url="https://media.codeweavers.com/pub/crossover/cxlinux/demo/crossover_{{ crossover_version | default('22.0.1-1') }}.deb"
+        dest="/tmp/crossover_amd64.deb"
+      when: crossover_deb_pkg.rc == 1
+
+    - name: Install crossover
+      apt: deb="/tmp/crossover_amd64.deb"
+      become: true
+      when: crossover_deb_pkg.rc == 1
+
+    - name: Remove crossover install package
+      file:
+        path: /tmp/crossover_amd64.deb
+        state: absent
+      when: crossover_deb_pkg.rc == 1  

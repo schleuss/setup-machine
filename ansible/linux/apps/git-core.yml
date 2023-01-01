@@ -1,0 +1,16 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:
+    - name: Add git-core repo
+      apt_repository:
+        repo: 'ppa:git-core/ppa'
+        codename: "{{ ubuntu_distro | default('jammy') }}"
+
+    - name: Install git-core
+      apt:
+        update_cache: yes
+        name: git
+        state: latest

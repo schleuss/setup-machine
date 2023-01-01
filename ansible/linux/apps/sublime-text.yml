@@ -1,0 +1,40 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+  
+  tasks:
+    - name: Check if sublime-text is installed
+      command: dpkg-query -W sublime-text
+      register: sublime_deb_pkg
+      failed_when: sublime_deb_pkg.rc > 1
+      changed_when: sublime_deb_pkg.rc == 1
+  
+    - name: Get sublime-text key
+      get_url:
+        url:  https://download.sublimetext.com/sublimehq-pub.gpg
+        dest: /tmp/sublimehq-pub.gpg
+      when: sublime_deb_pkg.rc == 1
+
+    - name: Create sublime-text gpg key 
+      command: gpg --batch --yes -o /etc/apt/trusted.gpg.d/sublimehq-archive.gpg --dearmor /tmp/sublimehq-pub.gpg
+      register: gpg_output
+      when: sublime_deb_pkg.rc == 1
+
+    - name: Remove sublime-text temp key
+      file:
+        path: "/tmp/sublimehq-pub.gpg"
+        state: absent
+      when: sublime_deb_pkg.rc == 1 and gpg_output.rc == 0
+ 
+    - name: Add sublime-text repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/sublimehq-archive.gpg] https://download.sublimetext.com/ apt/stable/"
+        state: present
+      when: sublime_deb_pkg.rc == 1 and gpg_output.rc == 0
+
+    - name: Install sublime-text
+      apt:
+        update_cache: yes
+        pkg: "sublime-text"
+      when: sublime_deb_pkg.rc == 1

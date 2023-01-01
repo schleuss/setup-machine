@@ -1,0 +1,55 @@
+---
+- hosts: localhost
+  connection: local 
+  become: true
+
+  tasks:  
+    - name: Check if sonicwall is installed
+      stat:
+        path: /usr/sbin/netExtender
+      register: sonicwall_pkg
+      changed_when: sonicwall_pkg.stat.exists == false
+
+    - name: Check the lastest sonicwall version
+      shell: curl -s https://www.sonicwall.com/products/remote-access/vpn-clients/ | grep "Linux TGZ 64-Bit" | cut -d= -f2 | cut -d\" -f2
+      register: results
+      changed_when: False
+      when: sonicwall_pkg.stat.exists == false
+
+    - set_fact:
+        sonicwall_download_url: "{{ results.stdout }}"
+      changed_when: False
+      when: sonicwall_pkg.stat.exists == false
+
+    - name: Download sonicwall 
+      get_url: 
+        url="{{ sonicwall_download_url }}"
+        dest="/tmp/NetExtender.Linux.x86_64.tgz"
+      register: results
+      when: sonicwall_pkg.stat.exists == false
+
+    - name: Extract sonicwall archive
+      unarchive:
+        src: /tmp/NetExtender.Linux.x86_64.tgz
+        dest: /tmp/
+      when: sonicwall_pkg.stat.exists == false
+
+    - name: Install sonicwall 
+      shell: echo y | bash /tmp/netExtenderClient/install
+      args:
+        chdir: /tmp/netExtenderClient
+      register: results
+      changed_when: False
+      when: sonicwall_pkg.stat.exists == false
+
+    - name: Remove sonicwall install package
+      file:
+        path: "/tmp/NetExtender.Linux.x86_64.tgz"
+        state: absent
+      when: sonicwall_pkg.stat.exists == false
+
+    - name: Remove sonicwall install directory
+      file:
+        path: "/tmp/netExtenderClient"
+        state: absent
+      when: sonicwall_pkg.stat.exists == false
