@@ -11,5 +11,5 @@ git clone https://github.com/rschleuss/setup-machine.git setup-machine && cd set
 Or direct ..
 
 ```
-curl -fSsL https://raw.githubusercontent.com/schleuss/setup-machine/main/install.sh | sudo sh
+curl -fSsL https://schleuss.github.io/install.sh | sudo sh
 ```
