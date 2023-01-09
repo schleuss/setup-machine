@@ -5,11 +5,11 @@
 Run script.
 
 ```
-git clone https://github.com/rschleuss/setup-machine.git setup-machine && cd setup-machine && sudo bash install.sh
+git clone https://github.com/rschleuss/setup-machine.git setup-machine && cd setup-machine && bash install.sh
 ```
 
 Or direct ..
 
 ```
-curl -fSsL https://schleuss.github.io/install.sh | sudo sh
+curl -fSsL https://schleuss.github.io/install.sh | bash
 ```
