@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   connection: local 
-  become: true
+  gather_facts: false
 
   handlers:
     - name: reload systemd
@@ -9,25 +9,34 @@
         state: restarted
         daemon_reload: yes
         name: docker
+      become: true
       ignore_errors: True
       
   tasks:
+    - name: Gather restrictive facts
+      setup:
+        gather_subset:
+        - 'min'
+
     - name: Update packages
       apt: 
         update_cache: yes
         cache_valid_time: 3600
+      become: true
       when: ansible_os_family == "Debian"
 
     - name: Add Docker GPG apt Key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
+      become: true
       when: ansible_os_family == "Debian"
 
     - name: Add Docker Repository
       apt_repository:
         repo: "deb https://download.docker.com/linux/ubuntu  {{ ubuntu_distro | default('jammy') }} stable"
         state: present
+      become: true
       when: ansible_os_family == "Debian"
 
     - name: Install Docker
@@ -35,7 +44,7 @@
         name: 
           - docker-ce
         state: present
-      become: yes
+      become: true
 
     - name: Start Docker service
       service:
@@ -43,13 +52,14 @@
         state: started
         enabled: yes
       ignore_errors: True
-      become: yes
+      become: true
 
     - name: Criar diretorios do docker
       file:
         path: "{{ item }}"
         state: directory
         mode: 0755
+      become: true
       loop:
         - /etc/docker
         - /etc/systemd/system/docker.service.d
@@ -59,6 +69,7 @@
         mode: 0644
         src: ./resources/daemon.json
         dest: /etc/docker/daemon.json
+      become: true
       notify: reload systemd
 
     - name: Verifica arquivo de configuração docker para usuário
@@ -66,6 +77,9 @@
         path: ~/.docker/config.json
       register: docker_cfg_result
 
-#   - name: Efetuar login do repositório de imagens
-#     shell: docker login {{ docker_repo_url }} --username "{{ docker_repo_user }}" --password "{{ docker_repo_pass }}"
-#     when: not docker_cfg_result.stat.exists
+    - name: Add user {{ ansible_user_id }} to docker group
+      user: 
+        name={{ ansible_user_id }}
+        groups=docker
+        append=yes
+      become: true

@@ -36,28 +36,28 @@ error() {
 # shellcheck disable=SC2312
 script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
 
-SUDO=""
-if [ $(id -u) -ne 0 ]
+if [ $(id -u) -eq 0 ]
 then
-    SUDO="sudo "
+    log_error "Don't run this script with root user"
+    exit 1
 fi
 
 updated=0
 if ! pip="$(command -v pip3)"; then
     log_task "Installing pip3"
-    $SUDO apt update && $SUDO apt install -y --no-install-recommends python3-pip
+    sudo apt update && sudo apt install -y --no-install-recommends python3-pip
     updated=1
 fi
 
 if ! pip="$(command -v ansible-playbook)"; then
     log_task "Installing ansible"
-    $SUDO pip3 install ansible
+    sudo pip3 install ansible
 fi
 
 if ! pip="$(command -v git)"; then
     log_task "Installing git"
-    [ $updated -eq 0 ] || $SUDO apt update 
-    $SUDO apt install --no-install-recommends git -y
+    [ $updated -eq 0 ] || sudo apt update 
+    sudo apt install --no-install-recommends git -y
 fi
 
 work_dir=$script_dir
@@ -75,4 +75,4 @@ fi
 export ANSIBLE_INVENTORY_UNPARSED_WARNING=false
 
 log_task "Running ansible playbook"
-ansible-playbook ansible/main.yml
+ansible-playbook ansible/main.yml --ask-become-pass

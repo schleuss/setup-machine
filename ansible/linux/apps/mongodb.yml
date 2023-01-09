@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   connection: local 
-  become: true
+  gather_facts: false
 
   tasks:
     - name: Check if mongodb is installed
@@ -19,6 +19,7 @@
     - name: Create mongodb gpg key 
       command: gpg --batch --yes -o /usr/share/keyrings/mongodb-keyring.gpg --dearmor /tmp/mongo_public.asc
       register: gpg_output
+      become: true
       when: mongodb_deb_pkg.rc == 1
 
     - name: Remove mongodb temp key
@@ -31,6 +32,7 @@
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/mongodb-keyring.gpg] https://repo.mongodb.org/apt/ubuntu {{ ubuntu_distro | default('jammy') }}/mongodb-org/{{ mongodb_version | default('6.0') }} multiverse"
         state: present
+      become: true
       when: mongodb_deb_pkg.rc == 1 and gpg_output.rc == 0
 
     - name: Install mongodb tools
@@ -41,6 +43,7 @@
           - mongodb-org-tools
           - mongodb-org-database-tools-extra
           - mongodb-database-tools
+      become: true
       when: mongodb_deb_pkg.rc == 1
 
     - name: Check if mongodb-compass is installed
@@ -54,6 +57,7 @@
       get_url: 
         url="https://downloads.mongodb.com/compass/mongodb-compass_{{ mongo_compass_version | default('1.34.2') }}_amd64.deb"
         dest="/tmp/mongodb-compass.deb"
+      become: true
       when: compass_deb_pkg.rc == 1
 
     - name: Install mongodb-compass

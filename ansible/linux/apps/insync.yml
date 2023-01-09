@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   connection: local 
-  become: true
+  gather_facts: false
 
   tasks:
     - name: Check if insync is installed
@@ -13,6 +13,7 @@
     - name: Import insync gpg key 
       command: gpg --keyserver keyserver.ubuntu.com --recv-keys ACCAF35C
       register: gpg_output
+      become: true
       when: insync_deb_pkg.rc == 1
 
     - name: Import insync gpg key 
@@ -23,6 +24,7 @@
     - name: Create insync gpg key 
       command: gpg --batch --yes -o /usr/share/keyrings/insync-keyring.gpg --dearmor /tmp/insync_public.asc
       register: gpg_output
+      become: true
       when: insync_deb_pkg.rc == 1
 
     - name: Remove insync temp key 
@@ -35,11 +37,12 @@
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/insync-keyring.gpg] http://apt.insync.io/ubuntu {{ ubuntu_distro | default('jammy') }} non-free contrib"
         state: present
+      become: true
       when: insync_deb_pkg.rc == 1 and gpg_output.rc == 0
 
     - name: Install insync
       apt:
         update_cache: yes
         pkg: "insync"
+      become: true
       when: insync_deb_pkg.rc == 1
-

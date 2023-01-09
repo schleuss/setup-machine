@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
-  connection: local 
-  become: true
+  connection: local
+  gather_facts: false
 
   tasks:  
     - name: Check if sonicwall is installed
@@ -37,9 +37,10 @@
     - name: Install sonicwall 
       shell: echo y | bash /tmp/netExtenderClient/install
       args:
-        chdir: /tmp/netExtenderClient
+        chdir: /tmp/netExtenderClient # SonicWall install fails if not executed from the install dir
       register: results
       changed_when: False
+      become: true
       when: sonicwall_pkg.stat.exists == false
 
     - name: Remove sonicwall install package

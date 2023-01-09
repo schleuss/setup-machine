@@ -1,8 +1,8 @@
 ---
 - hosts: localhost
   connection: local 
-  become: true
-  
+  gather_facts: false
+
   tasks:
     - name: Check if terraform is installed
       command: dpkg-query -W terraform
@@ -19,6 +19,7 @@
     - name: Create hashicorp gpg key 
       command: gpg --batch --yes -o /usr/share/keyrings/hashicorp-archive-keyring.gpg --dearmor /tmp/hashicorp-pub.gpg
       register: gpg_output
+      become: true
       when: terraform_deb_pkg.rc == 1
 
     - name: Remove hashicorp temp key
@@ -31,10 +32,12 @@
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ubuntu_distro | default('jammy') }} main"
         state: present
+      become: true
       when: terraform_deb_pkg.rc == 1 and gpg_output.rc == 0
 
     - name: Install terraform
       apt:
         update_cache: yes
         pkg: "terraform"
+      become: true
       when: terraform_deb_pkg.rc == 1

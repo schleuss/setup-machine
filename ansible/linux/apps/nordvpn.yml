@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   connection: local 
-  become: true
+  gather_facts: false
 
   tasks:
     - name: Check if nordvpn is installed
@@ -19,6 +19,7 @@
     - name: Create nordvpn gpg key 
       command: gpg --batch --yes -o /usr/share/keyrings/nordvpn-keyring.gpg --dearmor /tmp/nordvpn_public.asc
       register: gpg_output
+      become: true
       when: nordvpn_deb_pkg.rc == 1
 
     - name: Remove nordvpn temp key 
@@ -31,11 +32,13 @@
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/nordvpn-keyring.gpg] https://repo.nordvpn.com/deb/nordvpn/debian stable main"
         state: present
+      become: true
       when: nordvpn_deb_pkg.rc == 1 and gpg_output.rc == 0
 
     - name: Install nordvpn
       apt:
         update_cache: yes
         pkg: "nordvpn"
+      become: true
       when: nordvpn_deb_pkg.rc == 1
 

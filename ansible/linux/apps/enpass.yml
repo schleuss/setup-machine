@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   connection: local 
-  become: true
+  gather_facts: false
 
   tasks:
     - name: Check if enpass is installed
@@ -19,6 +19,7 @@
     - name: Create enpass gpg key 
       command: gpg --batch --yes -o /usr/share/keyrings/enpass-linux.gpg --dearmor /tmp/enpass.asc
       register: gpg_output
+      become: true
       when: enpass_deb_pkg.rc == 1
 
     - name: Remove enpass temp key 
@@ -31,11 +32,13 @@
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/enpass-linux.gpg] https://apt.enpass.io/ stable main"
         state: present
+      become: true
       when: enpass_deb_pkg.rc == 1 and gpg_output.rc == 0
 
     - name: Install enpass
       apt:
         update_cache: yes
         pkg: "enpass"
+      become: true
       when: enpass_deb_pkg.rc == 1
 

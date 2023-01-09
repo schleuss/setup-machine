@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   connection: local 
-  become: true
+  gather_facts: false
 
   tasks:  
     - name: Check if crossover is installed
@@ -25,4 +25,4 @@
       file:
         path: /tmp/crossover_amd64.deb
         state: absent
-      when: crossover_deb_pkg.rc == 1  
+      when: crossover_deb_pkg.rc == 1 
